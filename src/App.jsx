@@ -9,12 +9,14 @@ const navItems = [
   'Timetable',
   'Focus Timer',
   'Subjects',
+  'AI Assistant',
 ]
 
 const focusModes = ['Focus', 'Short Break', 'Long Break']
 
 const initialFocusSeconds = 25 * 60
 const storageKey = 'study-ai-data'
+const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY
 const defaultSubjects = [
   ['DS', 'Data structure', 'Semester 1'],
   ['DAA', 'Design and Analysis of Algorithm', 'Semester 1'],
@@ -51,6 +53,42 @@ const timetableDays = [
   { day: 'Saturday', classes: 'No classes' },
 ]
 
+const assistantSuggestions = [
+  'Explain binary search simply',
+  'Make me a study plan for today',
+  'What should I study first?',
+]
+
+function localAssistantAnswer(query, data) {
+  const prompt = query.toLowerCase()
+  const subjectNames = data.subjects.map((subject) => subject.name).join(', ')
+  if (/\b(hi|hello|hey)\b/.test(prompt)) return 'Hello! I can explain B.Tech topics, create study plans, and help you organize your StudyAI workspace.'
+  if (prompt.includes('study plan') || prompt.includes('what should i study')) return `Here is a focused plan: 1) Spend 25 minutes on ${data.subjects[0]?.name || 'your highest-priority subject'}. 2) Take a 5-minute break. 3) Review one note or create three flashcards. 4) Finish by checking your pending tasks (${data.tasks.filter((task) => task.status !== 'Completed').length}).`
+  if (prompt.includes('binary search')) return 'Binary search finds an item in a sorted list by repeatedly checking the middle. If the target is smaller, search the left half; if larger, search the right half. Its time complexity is O(log n).'
+  if (prompt.includes('subjects') || prompt.includes('courses')) return `Your current subjects are: ${subjectNames || 'none yet'}. I can help you make a revision plan for any of them.`
+  if (prompt.includes('task') || prompt.includes('assignment')) return `You have ${data.tasks.filter((task) => task.status !== 'Completed').length} pending tasks and ${data.tasks.filter((task) => task.status === 'Completed').length} completed tasks. Open Tasks to add, complete, or filter assignments.`
+  const calculation = query.trim().match(/^(-?\d+(?:\.\d+)?)\s*([+\-*%/])\s*(-?\d+(?:\.\d+)?)$/)
+  if (calculation) {
+    const left = Number(calculation[1])
+    const right = Number(calculation[3])
+    const operations = { '+': left + right, '-': left - right, '*': left * right, '/': right ? left / right : 'undefined', '%': right ? left % right : 'undefined' }
+    return `The answer is ${operations[calculation[2]]}.`
+  }
+  return `I can help with study topics, revision plans, tasks, and your ${data.subjects.length} subjects. For a broader answer, add a Gemini key as VITE_GEMINI_API_KEY in a local .env file.`
+}
+
+async function getGeminiAnswer(query, data) {
+  const context = `The student has ${data.subjects.length} subjects, ${data.tasks.length} tasks, ${data.notes.length} notes, and ${data.cards.length} flashcards.`
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: `You are StudyAI, a concise and encouraging B.Tech study assistant. ${context} Answer this student query clearly and practically: ${query}` }] }] }),
+  })
+  if (!response.ok) throw new Error('Gemini request failed')
+  const result = await response.json()
+  return result.candidates?.[0]?.content?.parts?.[0]?.text || localAssistantAnswer(query, data)
+}
+
 function readData() {
   try {
     const savedData = JSON.parse(localStorage.getItem(storageKey) || '{}')
@@ -72,6 +110,11 @@ function App() {
   const [data, setData] = useState(readData)
   const [taskFilter, setTaskFilter] = useState('All')
   const [noteSearch, setNoteSearch] = useState('')
+  const [assistantInput, setAssistantInput] = useState('')
+  const [assistantMessages, setAssistantMessages] = useState([
+    { role: 'assistant', text: 'Hi! I am your StudyAI assistant. Ask me about a B.Tech topic, your study plan, or your workspace.' },
+  ])
+  const [assistantLoading, setAssistantLoading] = useState(false)
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(data))
@@ -109,6 +152,23 @@ function App() {
     const title = window.prompt(`Class for ${day}`)
     if (!title?.trim()) return
     updateData('timetable', { ...data.timetable, [day]: [...(data.timetable[day] || []), { id: crypto.randomUUID(), title: title.trim() }] })
+  }
+
+  const askAssistant = async (question = assistantInput) => {
+    const cleanQuestion = question.trim()
+    if (!cleanQuestion || assistantLoading) return
+    setAssistantMessages((messages) => [...messages, { role: 'user', text: cleanQuestion }])
+    setAssistantInput('')
+    setAssistantLoading(true)
+    let answer
+    try {
+      answer = geminiApiKey ? await getGeminiAnswer(cleanQuestion, data) : localAssistantAnswer(cleanQuestion, data)
+    } catch {
+      answer = `${localAssistantAnswer(cleanQuestion, data)} Gemini could not be reached, so I used offline mode.`
+    } finally {
+      setAssistantLoading(false)
+    }
+    setAssistantMessages((messages) => [...messages, { role: 'assistant', text: answer }])
   }
 
   useEffect(() => {
@@ -344,6 +404,35 @@ function App() {
               </article>
             ))}
           </div>
+        </>
+      )
+    }
+
+    if (activeView === 'AI Assistant') {
+      return (
+        <>
+          <header className="page-header assistant-header">
+            <div>
+              <div className="eyebrow">STUDY COMPANION</div>
+              <h1>AI Assistant</h1>
+              <p>Get clear explanations and turn questions into your next study step.</p>
+            </div>
+            <div className="assistant-status"><span /> Ready to help</div>
+          </header>
+          <section className="assistant-layout">
+            <div className="assistant-chat panel">
+              <div className="chat-header"><div><h2>StudyAI Copilot</h2><p>Personalized to your subjects, tasks, and notes</p></div><span className="chat-dot" /></div>
+              <div className="message-list" aria-live="polite">
+                {assistantMessages.map((message, index) => <div className={`message ${message.role}`} key={`${message.role}-${index}`}><span className="message-avatar">{message.role === 'assistant' ? '✦' : 'You'}</span><p>{message.text}</p></div>)}
+                {assistantLoading && <div className="message assistant"><span className="message-avatar">✦</span><p>Thinking...</p></div>}
+              </div>
+              <form className="assistant-form" onSubmit={(event) => { event.preventDefault(); askAssistant() }}>
+                <input value={assistantInput} onChange={(event) => setAssistantInput(event.target.value)} placeholder="Ask anything about your studies..." aria-label="Ask the StudyAI assistant" />
+                <button type="submit" className="primary-btn" aria-label="Send question" disabled={assistantLoading}>Send →</button>
+              </form>
+            </div>
+            <aside className="assistant-tools panel"><h2>Try asking</h2><div className="suggestion-list">{assistantSuggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => askAssistant(suggestion)}>{suggestion}<span>↗</span></button>)}</div><div className="context-card"><span>CONTEXT AWARE</span><strong>{data.subjects.length} subjects</strong><p>{data.tasks.length} tasks · {data.notes.length} notes · {data.cards.length} flashcards</p></div></aside>
+          </section>
         </>
       )
     }
