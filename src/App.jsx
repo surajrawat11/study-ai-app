@@ -11,32 +11,25 @@ const navItems = [
   'Subjects',
 ]
 
-const overviewCards = [
-  { label: 'Subjects', value: '1', icon: '📘', accent: 'blue', detail: 'Active course' },
-  { label: 'Pending Tasks', value: '0', icon: '✅', accent: 'amber', detail: '0 completed' },
-  { label: 'Study Time', value: '0m', icon: '⏱️', accent: 'green', detail: 'This week' },
-  { label: 'Overdue', value: '0', icon: '⚠️', accent: 'red', detail: 'No blockers' },
-]
-
-const subjects = [
-  { code: 'D', name: 'Data structure', semester: 'Semester 1' },
-  { code: 'A', name: 'Algorithms', semester: 'Semester 1' },
-  { code: 'CS', name: 'Computer systems', semester: 'Semester 2' },
-]
-
-const timetable = [
-  { day: 'Sunday', active: true, classes: 'No classes' },
-  { day: 'Monday', classes: 'No classes' },
-  { day: 'Tuesday', classes: 'No classes' },
-  { day: 'Wednesday', classes: 'No classes' },
-  { day: 'Thursday', classes: 'No classes' },
-  { day: 'Friday', classes: 'No classes' },
-  { day: 'Saturday', classes: 'No classes' },
-]
-
 const focusModes = ['Focus', 'Short Break', 'Long Break']
 
 const initialFocusSeconds = 25 * 60
+const storageKey = 'study-ai-data'
+const starterData = {
+  tasks: [],
+  notes: [],
+  cards: [],
+  subjects: [{ id: 'default-subject', code: 'D', name: 'Data structure', semester: 'Semester 1' }],
+  timetable: {},
+}
+
+function readData() {
+  try {
+    return { ...starterData, ...JSON.parse(localStorage.getItem(storageKey) || '{}') }
+  } catch {
+    return starterData
+  }
+}
 
 function App() {
   const [activeView, setActiveView] = useState('Dashboard')
@@ -44,6 +37,47 @@ function App() {
   const [secondsLeft, setSecondsLeft] = useState(initialFocusSeconds)
   const [isRunning, setIsRunning] = useState(false)
   const [completedPomodoros, setCompletedPomodoros] = useState(0)
+  const [data, setData] = useState(readData)
+  const [taskFilter, setTaskFilter] = useState('All')
+  const [noteSearch, setNoteSearch] = useState('')
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(data))
+  }, [data])
+
+  const updateData = (key, value) => setData((current) => ({ ...current, [key]: value }))
+  const addItem = (key, item) => updateData(key, [...data[key], { ...item, id: crypto.randomUUID() }])
+  const removeItem = (key, id) => updateData(key, data[key].filter((item) => item.id !== id))
+
+  const addTask = () => {
+    const title = window.prompt('Task title')
+    if (!title?.trim()) return
+    addItem('tasks', { title: title.trim(), status: 'Pending', due: window.prompt('Due date (optional)') || 'No due date' })
+  }
+
+  const addNote = () => {
+    const title = window.prompt('Note title')
+    if (!title?.trim()) return
+    addItem('notes', { title: title.trim(), body: window.prompt('Note content') || '' })
+  }
+
+  const addCard = () => {
+    const question = window.prompt('Flashcard question')
+    if (!question?.trim()) return
+    addItem('cards', { question: question.trim(), answer: window.prompt('Answer') || '' })
+  }
+
+  const addSubject = () => {
+    const name = window.prompt('Subject name')
+    if (!name?.trim()) return
+    addItem('subjects', { name: name.trim(), code: (window.prompt('Short code') || 'S').slice(0, 3).toUpperCase(), semester: 'Current semester' })
+  }
+
+  const addClass = (day) => {
+    const title = window.prompt(`Class for ${day}`)
+    if (!title?.trim()) return
+    updateData('timetable', { ...data.timetable, [day]: [...(data.timetable[day] || []), { id: crypto.randomUUID(), title: title.trim() }] })
+  }
 
   useEffect(() => {
     if (!isRunning) return undefined
@@ -102,12 +136,12 @@ function App() {
             <div className="panel deadlines-panel">
               <div className="panel-header">
                 <h2>Upcoming Deadlines</h2>
-                <button type="button">View all →</button>
+                <button type="button" onClick={() => setActiveView('Tasks')}>View all →</button>
               </div>
               <div className="empty-state large">
                 <div className="empty-icon">✓</div>
                 <p>No upcoming deadlines. You&apos;re all caught up!</p>
-                <button type="button" className="primary-btn">+ Add a task</button>
+                <button type="button" className="primary-btn" onClick={addTask}>+ Add a task</button>
               </div>
             </div>
 
@@ -128,7 +162,7 @@ function App() {
                   <span key={day + index} className={index === 0 ? 'active' : ''}>{day}</span>
                 ))}
               </div>
-              <button type="button" className="secondary-btn">▶ Start Focus Session</button>
+              <button type="button" className="secondary-btn" onClick={() => setActiveView('Focus Timer')}>▶ Start Focus Session</button>
             </aside>
           </section>
         </>
@@ -143,21 +177,30 @@ function App() {
               <h1>Tasks &amp; Assignments</h1>
               <p>Track your assignments, projects, and deadlines</p>
             </div>
-            <button type="button" className="primary-btn large">+ New Task</button>
+            <button type="button" className="primary-btn large" onClick={addTask}>+ New Task</button>
           </header>
 
           <div className="filters">
-            {['All 0', 'Pending 0', 'In Progress 0', 'Completed 0', 'Overdue 0'].map((filter) => (
-              <button type="button" key={filter} className={filter.startsWith('All') ? 'active' : ''}>
-                {filter}
+            {['All', 'Pending', 'In Progress', 'Completed', 'Overdue'].map((filter) => (
+              <button type="button" key={filter} className={taskFilter === filter ? 'active' : ''} onClick={() => setTaskFilter(filter)}>
+                {filter} {filter === 'All' ? data.tasks.length : data.tasks.filter((task) => task.status === filter).length}
               </button>
             ))}
           </div>
 
-          <div className="empty-state panel-box">
+          {data.tasks.filter((task) => taskFilter === 'All' || task.status === taskFilter).length ? <div className="item-list panel-box">
+            {data.tasks.filter((task) => taskFilter === 'All' || task.status === taskFilter).map((task) => (
+              <div className="list-item" key={task.id}>
+                <button type="button" className="check-btn" onClick={() => updateData('tasks', data.tasks.map((item) => item.id === task.id ? { ...item, status: item.status === 'Completed' ? 'Pending' : 'Completed' } : item))}>{task.status === 'Completed' ? '✓' : '○'}</button>
+                <span className={task.status === 'Completed' ? 'done' : ''}>{task.title}</span><small>{task.due}</small>
+                <button type="button" className="delete-btn" onClick={() => removeItem('tasks', task.id)}>Delete</button>
+              </div>
+            ))}
+          </div> : <div className="empty-state panel-box">
             <div className="empty-icon">✓</div>
             <p>No tasks here. Create one to get started!</p>
-          </div>
+            <button type="button" className="primary-btn" onClick={addTask}>+ New Task</button>
+          </div>}
         </>
       )
     }
@@ -170,18 +213,19 @@ function App() {
               <h1>Study Notes</h1>
               <p>Organize and review your study materials</p>
             </div>
-            <button type="button" className="primary-btn large">+ New Note</button>
+            <button type="button" className="primary-btn large" onClick={addNote}>+ New Note</button>
           </header>
 
           <div className="search-row">
-            <div className="search-box">🔎 Search notes...</div>
+            <input className="search-box" value={noteSearch} onChange={(event) => setNoteSearch(event.target.value)} placeholder="🔎 Search notes..." />
             <div className="filter-select">All subjects ▾</div>
           </div>
 
-          <div className="empty-state panel-box wide">
+          {data.notes.filter((note) => `${note.title} ${note.body}`.toLowerCase().includes(noteSearch.toLowerCase())).length ? <div className="note-grid">{data.notes.filter((note) => `${note.title} ${note.body}`.toLowerCase().includes(noteSearch.toLowerCase())).map((note) => <article className="note-card" key={note.id}><div><h3>{note.title}</h3><p>{note.body || 'No content yet'}</p></div><button type="button" className="delete-btn" onClick={() => removeItem('notes', note.id)}>Delete</button></article>)}</div> : <div className="empty-state panel-box wide">
             <div className="empty-icon paper-icon">📝</div>
             <p>No notes yet. Create your first note!</p>
-          </div>
+            <button type="button" className="primary-btn" onClick={addNote}>+ New Note</button>
+          </div>}
         </>
       )
     }
@@ -195,23 +239,24 @@ function App() {
               <p>Create and study flashcards for quick revision</p>
             </div>
             <div className="header-actions">
-              <button type="button" className="study-btn">✦ Study</button>
-              <button type="button" className="primary-btn large">+ New Card</button>
+              <button type="button" className="study-btn" onClick={() => window.alert(data.cards.length ? `You have ${data.cards.length} cards ready to study.` : 'Create a card first.')}>✦ Study</button>
+              <button type="button" className="primary-btn large" onClick={addCard}>+ New Card</button>
             </div>
           </header>
 
           <div className="filters compact-filters">
-            {['All (0)', 'Data structure (0)'].map((filter) => (
-              <button type="button" key={filter} className={filter.includes('All') ? 'active' : ''}>
-                {filter}
+            {['All', 'Data structure'].map((filter) => (
+              <button type="button" key={filter} className={filter === 'All' ? 'active' : ''}>
+                {filter} ({filter === 'All' ? data.cards.length : data.cards.filter((card) => card.subject === filter).length})
               </button>
             ))}
           </div>
 
-          <div className="empty-state panel-box large-box">
+          {data.cards.length ? <div className="card-grid">{data.cards.map((card) => <article className="flashcard" key={card.id}><div><span>QUESTION</span><h3>{card.question}</h3><p>{card.answer}</p></div><button type="button" className="delete-btn" onClick={() => removeItem('cards', card.id)}>Delete</button></article>)}</div> : <div className="empty-state panel-box large-box">
             <div className="empty-icon card-icon">▣</div>
             <p>No flashcards yet. Create some to start studying!</p>
-          </div>
+            <button type="button" className="primary-btn" onClick={addCard}>+ New Card</button>
+          </div>}
         </>
       )
     }
@@ -229,9 +274,9 @@ function App() {
               <div key={slot.day} className={`day-card ${slot.active ? 'active' : ''}`}>
                 <div className="day-title-row">
                   <span>{slot.day}</span>
-                  {slot.active ? <span className="day-badge">Today</span> : <button type="button">+</button>}
+                  {slot.active ? <span className="day-badge">Today</span> : <button type="button" onClick={() => addClass(slot.day)}>+</button>}
                 </div>
-                <p>{slot.classes}</p>
+                {data.timetable[slot.day]?.length ? data.timetable[slot.day].map((item) => <div className="class-item" key={item.id}>{item.title}<button type="button" onClick={() => updateData('timetable', { ...data.timetable, [slot.day]: data.timetable[slot.day].filter((entry) => entry.id !== item.id) })}>×</button></div>) : <p>{slot.classes}</p>}
               </div>
             ))}
           </div>
@@ -247,17 +292,18 @@ function App() {
               <h1>Subjects</h1>
               <p>Manage your courses and subjects</p>
             </div>
-            <button type="button" className="primary-btn large">+ Add Subject</button>
+            <button type="button" className="primary-btn large" onClick={addSubject}>+ Add Subject</button>
           </header>
 
           <div className="subject-list">
-            {subjects.map((subject) => (
-              <article key={subject.name} className="subject-card">
+            {data.subjects.map((subject) => (
+              <article key={subject.id || subject.name} className="subject-card">
                 <div className="subject-badge">{subject.code}</div>
                 <div>
                   <h3>{subject.name}</h3>
                   <p>{subject.semester}</p>
                 </div>
+                {subject.id !== 'default-subject' && <button type="button" className="delete-btn" onClick={() => removeItem('subjects', subject.id)}>Delete</button>}
               </article>
             ))}
           </div>

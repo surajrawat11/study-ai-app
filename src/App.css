@@ -691,6 +691,124 @@
   cursor: pointer;
 }
 
+.item-list,
+.note-grid,
+.card-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.item-list.panel-box {
+  align-content: start;
+  justify-content: stretch;
+  text-align: left;
+  padding: 22px;
+}
+
+.list-item,
+.note-card,
+.flashcard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid rgba(129, 155, 196, 0.14);
+  border-radius: 14px;
+  background: rgba(23, 37, 52, 0.82);
+}
+
+.list-item span {
+  flex: 1;
+  font-weight: 650;
+}
+
+.list-item small {
+  color: #a9bdd8;
+}
+
+.list-item .done {
+  color: #9aacc3;
+  text-decoration: line-through;
+}
+
+.check-btn,
+.delete-btn,
+.class-item button {
+  border: 0;
+  cursor: pointer;
+}
+
+.check-btn {
+  background: transparent;
+  color: #76a8ff;
+  font-size: 1.35rem;
+}
+
+.delete-btn {
+  background: rgba(255, 110, 110, 0.12);
+  color: #ffb0b0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+.note-grid,
+.card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.note-card,
+.flashcard {
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 150px;
+}
+
+.note-card h3,
+.flashcard h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.note-card p,
+.flashcard p {
+  margin: 0;
+  color: #bfd0e6;
+  line-height: 1.5;
+}
+
+.flashcard span {
+  color: #7facf9;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.class-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(78, 134, 238, 0.14);
+  color: #e5efff;
+}
+
+.class-item button {
+  background: transparent;
+  color: #a8c7ef;
+  font-size: 1.1rem;
+}
+
+input.search-box {
+  width: 100%;
+  outline: none;
+}
+
+input.search-box:focus {
+  border-color: rgba(101, 146, 255, 0.65);
+}
+
 @media (max-width: 1120px) {
   .app-shell {
     grid-template-columns: 230px minmax(0, 1fr);
