@@ -122,7 +122,12 @@ function App() {
           </header>
 
           <section className="summary-grid">
-            {overviewCards.map((card) => (
+            {[
+              { label: 'Subjects', value: data.subjects.length, icon: '📘', accent: 'blue', detail: 'Active courses' },
+              { label: 'Pending Tasks', value: data.tasks.filter((task) => task.status !== 'Completed').length, icon: '✅', accent: 'amber', detail: `${data.tasks.filter((task) => task.status === 'Completed').length} completed` },
+              { label: 'Study Time', value: `${completedPomodoros * 25}m`, icon: '⏱️', accent: 'green', detail: 'This week' },
+              { label: 'Overdue', value: data.tasks.filter((task) => task.status === 'Overdue').length, icon: '⚠️', accent: 'red', detail: 'No blockers' },
+            ].map((card) => (
               <article key={card.label} className={`summary-card ${card.accent}`}>
                 <div className="icon-wrap">{card.icon}</div>
                 <div className="summary-value">{card.value}</div>
