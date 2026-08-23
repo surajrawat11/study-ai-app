@@ -19,7 +19,11 @@ const starterData = {
   tasks: [],
   notes: [],
   cards: [],
-  subjects: [{ id: 'default-subject', code: 'D', name: 'Data structure', semester: 'Semester 1' }],
+  subjects: [
+    { id: 'default-data-structure', code: 'D', name: 'Data structure', semester: 'Semester 1' },
+    { id: 'default-algorithms', code: 'A', name: 'Algorithms', semester: 'Semester 1' },
+    { id: 'default-computer-systems', code: 'CS', name: 'Computer systems', semester: 'Semester 2' },
+  ],
   timetable: {},
 }
 
@@ -35,7 +39,9 @@ const timetableDays = [
 
 function readData() {
   try {
-    return { ...starterData, ...JSON.parse(localStorage.getItem(storageKey) || '{}') }
+    const savedData = JSON.parse(localStorage.getItem(storageKey) || '{}')
+    const hasOldSingleSubject = savedData.subjects?.length === 1 && savedData.subjects[0].id === 'default-subject'
+    return { ...starterData, ...savedData, subjects: hasOldSingleSubject ? starterData.subjects : savedData.subjects || starterData.subjects }
   } catch {
     return starterData
   }
@@ -318,7 +324,7 @@ function App() {
                   <h3>{subject.name}</h3>
                   <p>{subject.semester}</p>
                 </div>
-                {subject.id !== 'default-subject' && <button type="button" className="delete-btn" onClick={() => removeItem('subjects', subject.id)}>Delete</button>}
+                {!subject.id?.startsWith('default-') && <button type="button" className="delete-btn" onClick={() => removeItem('subjects', subject.id)}>Delete</button>}
               </article>
             ))}
           </div>
