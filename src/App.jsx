@@ -15,15 +15,29 @@ const focusModes = ['Focus', 'Short Break', 'Long Break']
 
 const initialFocusSeconds = 25 * 60
 const storageKey = 'study-ai-data'
+const defaultSubjects = [
+  ['DS', 'Data structure', 'Semester 1'],
+  ['DAA', 'Design and Analysis of Algorithm', 'Semester 1'],
+  ['WT', 'Web Technology', 'Semester 1'],
+  ['DBMS', 'Database Management System', 'Semester 1'],
+  ['MR', 'Mechanics of Robotics', 'Semester 1'],
+  ['DEC', 'Data Encryption and Compression', 'Semester 1'],
+  ['CC', 'Cloud Computing', 'Semester 1'],
+  ['AI', 'Artificial Intelligence', 'Semester 1'],
+  ['DA', 'Data Analytics', 'Semester 1'],
+  ['DWM', 'Data Warehousing & Data Mining', 'Semester 1'],
+  ['COI', 'Constitution of India', 'Semester 1'],
+  ['DAA LAB', 'Design and Analysis of Algorithm Lab', 'Semester 1'],
+  ['WT LAB', 'Web Technology Lab', 'Semester 1'],
+  ['DBMS LAB', 'Database Management System Lab', 'Semester 1'],
+  ['AI LAB', 'Artificial Intelligence Lab', 'Semester 1'],
+].map(([code, name, semester], index) => ({ id: `default-subject-${index}`, code, name, semester }))
+
 const starterData = {
   tasks: [],
   notes: [],
   cards: [],
-  subjects: [
-    { id: 'default-data-structure', code: 'D', name: 'Data structure', semester: 'Semester 1' },
-    { id: 'default-algorithms', code: 'A', name: 'Algorithms', semester: 'Semester 1' },
-    { id: 'default-computer-systems', code: 'CS', name: 'Computer systems', semester: 'Semester 2' },
-  ],
+  subjects: defaultSubjects,
   timetable: {},
 }
 
@@ -40,8 +54,10 @@ const timetableDays = [
 function readData() {
   try {
     const savedData = JSON.parse(localStorage.getItem(storageKey) || '{}')
-    const hasOldSingleSubject = savedData.subjects?.length === 1 && savedData.subjects[0].id === 'default-subject'
-    return { ...starterData, ...savedData, subjects: hasOldSingleSubject ? starterData.subjects : savedData.subjects || starterData.subjects }
+    const savedSubjects = savedData.subjects || []
+    const existingNames = new Set(savedSubjects.map((subject) => subject.name))
+    const missingSubjects = starterData.subjects.filter((subject) => !existingNames.has(subject.name))
+    return { ...starterData, ...savedData, subjects: [...savedSubjects, ...missingSubjects] }
   } catch {
     return starterData
   }
@@ -452,6 +468,7 @@ function App() {
           <p>
             Use the Pomodoro timer for 25-minute focused study sessions with 5-minute breaks.
           </p>
+          <small className="developer-credit">Developed by Monu Jha</small>
         </div>
       </aside>
 

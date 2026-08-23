@@ -105,6 +105,14 @@
   line-height: 1.5;
 }
 
+.developer-credit {
+  display: block;
+  margin-top: 16px;
+  color: #8fa7c5;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
 .main-panel {
   background: linear-gradient(180deg, #071722 0%, #0a1d2f 100%);
   padding: 32px 36px 24px;
