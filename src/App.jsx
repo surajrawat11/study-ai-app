@@ -23,6 +23,16 @@ const starterData = {
   timetable: {},
 }
 
+const timetableDays = [
+  { day: 'Sunday', active: true, classes: 'No classes' },
+  { day: 'Monday', classes: 'No classes' },
+  { day: 'Tuesday', classes: 'No classes' },
+  { day: 'Wednesday', classes: 'No classes' },
+  { day: 'Thursday', classes: 'No classes' },
+  { day: 'Friday', classes: 'No classes' },
+  { day: 'Saturday', classes: 'No classes' },
+]
+
 function readData() {
   try {
     return { ...starterData, ...JSON.parse(localStorage.getItem(storageKey) || '{}') }
@@ -275,7 +285,7 @@ function App() {
           </header>
 
           <div className="timetable-grid">
-            {timetable.map((slot) => (
+            {timetableDays.map((slot) => (
               <div key={slot.day} className={`day-card ${slot.active ? 'active' : ''}`}>
                 <div className="day-title-row">
                   <span>{slot.day}</span>
